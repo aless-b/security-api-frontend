@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security API Exercise - Frontend</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="app-header">
+      <h1>API Key Verification Pattern</h1>
+    </header>
+
+    <main class="card">
+      <section class="config-section">
+        <label for="api-key-input" class="input-label">
+          <strong>API Key Header (x-api-key):</strong>
+        </label>
+        <div class="input-group">
+          <input 
+            type="text" 
+            id="api-key-input" 
+            placeholder="Enter API key..." 
+            value="SECRET_EDUCATIONAL_KEY_12345" 
+            autocomplete="off"
+          />
+          <button id="reset-key-btn" class="btn btn-secondary" title="Reset default valid key">Set Valid Key</button>
+          <button id="clear-key-btn" class="btn btn-secondary" title="Clear key to test 401">Clear Key</button>
+        </div>
+      </section>
+
+      <section class="actions-section">
+        <h2>Actions</h2>
+        <div class="button-group">
+          <button id="get-health-btn" class="btn btn-info">
+            GET /health
+            <span class="btn-subtext">(Public)</span>
+          </button>
+          <button id="get-data-btn" class="btn btn-primary">
+            Get Protected Data
+            <span class="btn-subtext">(GET /api/data)</span>
+          </button>
+          <button id="post-data-btn" class="btn btn-success">
+            Send POST Request
+            <span class="btn-subtext">(POST /api/data)</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="response-section">
+        <div class="response-header">
+          <h2>Response:</h2>
+          <div id="status-badge" class="status-badge hidden"></div>
+        </div>
+        
+        <div class="response-box">
+          <pre id="response-output">Click one of the buttons above to send an HTTP request to the backend.</pre>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
