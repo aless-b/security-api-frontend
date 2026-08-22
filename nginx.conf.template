@@ -1,0 +1,43 @@
+server {
+    listen 80;
+    server_name localhost;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Disable caching for static assets during testing
+    location ~* \.(html|js|css)$ {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires 0;
+        try_files $uri =404;
+    }
+
+    # SPA routing - fallback to index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Public health check endpoint proxy route
+    location /health {
+        proxy_pass ${BACKEND_URL}/health;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Protected API proxy route with Server-Side Credential Offloading
+    location /api/ {
+        proxy_pass ${BACKEND_URL}/api/;
+
+        # Header Injection: Nginx injects the secret API key server-side so browser never exposes it
+        proxy_set_header x-api-key "${API_KEY}";
+
+        # Standard Proxy Headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

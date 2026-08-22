@@ -1,0 +1,28 @@
+# Version Control Systems
+.git
+.gitignore
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Documentation
+README.md
+*.md
+
+# Docker / Compose Specifications
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Editor / IDE Settings
+.vscode/
+.idea/
+
+# Operating System Junk
+.DS_Store
+Thumbs.db
+
+# Logs & Temporary Files
+*.log

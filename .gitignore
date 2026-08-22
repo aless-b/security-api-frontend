@@ -1,7 +1,25 @@
+# Environment files containing secrets (keep .env.example committed)
+.env
+.env.local
+.env.*.local
+
+# Node & package manager files
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Operating System Files
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# Editor / IDE settings
+# Editor & IDE Settings
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# Docker / Temporary Files
+.docker/
+*.log

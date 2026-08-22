@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api-key-frontend
+    ports:
+      - "8080:80"
+    env_file:
+      - .env
+    environment:
+      - API_KEY=${API_KEY}
+      - BACKEND_URL=${BACKEND_URL}
+    restart: unless-stopped

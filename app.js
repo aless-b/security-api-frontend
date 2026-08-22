@@ -1,27 +1,10 @@
-// API Base URL
-const API_BASE_URL = 'http://localhost:3000';
-const DEFAULT_API_KEY = 'SECRET_EDUCATIONAL_KEY_12345';
-
 // DOM Elements
-const apiKeyInput = document.getElementById('api-key-input');
-const resetKeyBtn = document.getElementById('reset-key-btn');
-const clearKeyBtn = document.getElementById('clear-key-btn');
-
 const getHealthBtn = document.getElementById('get-health-btn');
 const getDataBtn = document.getElementById('get-data-btn');
 const postDataBtn = document.getElementById('post-data-btn');
 
 const responseOutput = document.getElementById('response-output');
 const statusBadge = document.getElementById('status-badge');
-
-// Key Control Handlers
-resetKeyBtn.addEventListener('click', () => {
-  apiKeyInput.value = DEFAULT_API_KEY;
-});
-
-clearKeyBtn.addEventListener('click', () => {
-  apiKeyInput.value = '';
-});
 
 // Helper function to update status badge
 function updateStatusBadge(status, statusText) {
@@ -35,24 +18,31 @@ function updateStatusBadge(status, statusText) {
   }
 }
 
-// Core Fetch Handler
-async function makeApiRequest(endpoint, method = 'GET', includeKey = true) {
-  responseOutput.textContent = 'Sending request...';
+// Core Fetch Handler - Client Application
+// Header Sanitization: Client browser sends ZERO secret tokens or API keys.
+// Credential injection is handled server-side by Nginx reverse proxy.
+async function makeApiRequest(endpoint, method = 'GET', body = null) {
+  responseOutput.textContent = 'Sending request via Nginx Reverse Proxy...';
   statusBadge.classList.add('hidden');
 
-  const headers = {};
-  if (includeKey) {
-    const key = apiKeyInput.value.trim();
-    if (key) {
-      headers['x-api-key'] = key;
-    }
+  // Standard headers ONLY - Zero sensitive credentials or tokens attached by browser
+  const headers = {
+    'Accept': 'application/json'
+  };
+
+  const options = {
+    method: method,
+    headers: headers
+  };
+
+  if (body) {
+    headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(body);
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: method,
-      headers: headers
-    });
+    // Relative URL request routed to local Nginx reverse proxy
+    const response = await fetch(endpoint, options);
 
     updateStatusBadge(response.status, response.statusText);
 
@@ -70,25 +60,21 @@ async function makeApiRequest(endpoint, method = 'GET', includeKey = true) {
     statusBadge.textContent = 'Network Error';
 
     responseOutput.textContent = JSON.stringify({
-      error: 'Failed to communicate with API server',
-      details: error.message,
-      hint: `Ensure backend is running at ${API_BASE_URL}`
+      error: 'Failed to communicate with Nginx proxy server',
+      details: error.message
     }, null, 2);
   }
 }
 
 // Event Listeners for API Calls
 getHealthBtn.addEventListener('click', () => {
-  // Public endpoint - does not send x-api-key
-  makeApiRequest('/health', 'GET', false);
+  makeApiRequest('/health', 'GET');
 });
 
 getDataBtn.addEventListener('click', () => {
-  // Protected GET endpoint - sends x-api-key
-  makeApiRequest('/api/data', 'GET', true);
+  makeApiRequest('/api/data', 'GET');
 });
 
 postDataBtn.addEventListener('click', () => {
-  // Protected POST endpoint - sends x-api-key
-  makeApiRequest('/api/data', 'POST', true);
+  makeApiRequest('/api/data', 'POST', { message: 'Secure payload from client' });
 });

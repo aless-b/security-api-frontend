@@ -3,30 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Security API Exercise - Frontend</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>Security API Exercise - Frontend (Nginx Proxy)</title>
+  <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
   <div class="container">
     <header class="app-header">
-      <h1>API Key Verification Pattern</h1>
+      <span class="badge">Security Architecture</span>
+      <h1>API Key Credential Offloading Pattern</h1>
+      <p class="subtitle">Nginx Reverse Proxy & Server-Side Header Injection</p>
     </header>
 
     <main class="card">
       <section class="config-section">
-        <label for="api-key-input" class="input-label">
-          <strong>API Key Header (x-api-key):</strong>
-        </label>
-        <div class="input-group">
-          <input 
-            type="text" 
-            id="api-key-input" 
-            placeholder="Enter API key..." 
-            value="SECRET_EDUCATIONAL_KEY_12345" 
-            autocomplete="off"
-          />
-          <button id="reset-key-btn" class="btn btn-secondary" title="Reset default valid key">Set Valid Key</button>
-          <button id="clear-key-btn" class="btn btn-secondary" title="Clear key to test 401">Clear Key</button>
+        <div class="security-banner">
+          🔒 <strong>Secure Header Offloading:</strong> Requests sent from the browser contain ZERO sensitive API keys or tokens. 
+          The Nginx reverse proxy attaches the <code>x-api-key</code> header server-side before forwarding requests to the backend.
         </div>
       </section>
 
@@ -55,12 +47,16 @@
         </div>
         
         <div class="response-box">
-          <pre id="response-output">Click one of the buttons above to send an HTTP request to the backend.</pre>
+          <pre id="response-output">Click one of the buttons above to send an HTTP request through Nginx.</pre>
         </div>
       </section>
     </main>
+
+    <footer class="app-footer">
+      <p>💡 Inspect browser Developer Tools (Network tab): Notice that zero <code>x-api-key</code> headers are sent by the browser!</p>
+    </footer>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>
