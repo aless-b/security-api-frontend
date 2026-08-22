@@ -8,17 +8,22 @@ This repository contains the containerized Nginx frontend web interface for the 
 
 ```text
 api-key-frontend/
-├── index.html            # Webpage structure & UI presentation
-├── styles.css            # Clean modern visual layout
-├── app.js                # Sanitized client-side fetch() API logic (zero browser secrets)
-├── nginx.conf.template   # Nginx configuration template with reverse proxy & header injection
-├── docker-entrypoint.sh  # POSIX entrypoint script for envsubst environment variable substitution
-├── Dockerfile            # Container build specification using nginx:1.27-alpine
-├── docker-compose.yml    # Docker Compose service orchestration
-├── .env                  # Environment variables file
-├── .env.example          # Template environment file
-├── .dockerignore         # Docker context exclusions
-└── README.md             # Project documentation
+├── docker/                     # Nginx configurations & entrypoint scripts
+│   ├── nginx.conf.template     # Nginx template with reverse proxy & offloading rules
+│   └── docker-entrypoint.sh    # Script for envsubst environment variable substitution
+├── src/                        # Static web application source code
+│   ├── index.html              # Main HTML webpage
+│   ├── css/
+│   │   └── styles.css          # Stylesheets
+│   └── js/
+│       └── app.js              # Client application logic (zero browser secrets)
+├── .dockerignore               # Docker build exclusions
+├── .env                        # Local environment secrets (ignored by Git)
+├── .env.example                # Example environment template
+├── .gitignore                  # Git exclusions
+├── Dockerfile                  # Container build instructions
+├── docker-compose.yml          # Container orchestration
+└── README.md                   # Project documentation
 ```
 
 ---
@@ -31,8 +36,8 @@ api-key-frontend/
         1. GET /api/data (Sanitized headers ONLY - No secrets sent)
                      ▼
       Nginx Reverse Proxy Container (Port 80)
-        - Serves static assets (index.html, styles.css, app.js)
-        - Substitutes env vars into nginx.conf.template via docker-entrypoint.sh
+        - Serves static assets from src/ (index.html, css/styles.css, js/app.js)
+        - Substitutes env vars into docker/nginx.conf.template via docker-entrypoint.sh
         - Injects header server-side: x-api-key: ${API_KEY}
                      │
         2. Proxied Request with Injected Header
@@ -49,7 +54,7 @@ api-key-frontend/
 ## 🔒 Key Security Features
 
 - **Server-Side Credential Offloading:** The sensitive `x-api-key` header is attached strictly by Nginx server-side (`proxy_set_header x-api-key "${API_KEY}";`).
-- **Header Sanitization:** Client-side JavaScript (`app.js`) sends zero credentials or secrets in browser requests.
+- **Header Sanitization:** Client-side JavaScript (`src/js/app.js`) sends zero credentials or secrets in browser requests.
 - **Dynamic Configuration:** Environment variables (`API_KEY`, `BACKEND_URL`) are injected into the Nginx configuration at container startup via `envsubst`.
 
 ---
