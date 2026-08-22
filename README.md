@@ -9,14 +9,14 @@ This repository contains the containerized Nginx frontend web interface for the 
 ```text
 api-key-frontend/
 ├── docker/                     # Nginx configurations & entrypoint scripts
-│   ├── nginx.conf.template     # Nginx template with reverse proxy & offloading rules
+│   ├── nginx.conf.template     # Nginx template with mode mapping & reverse proxy rules
 │   └── docker-entrypoint.sh    # Script for envsubst environment variable substitution
 ├── src/                        # Static web application source code
-│   ├── index.html              # Main HTML webpage
+│   ├── index.html              # Main HTML webpage with mode selection UI
 │   ├── css/
-│   │   └── styles.css          # Stylesheets
+│   │   └── styles.css          # Stylesheets and visual layout
 │   └── js/
-│       └── app.js              # Client application logic (zero browser secrets)
+│       └── app.js              # Client application fetch logic (zero browser secrets)
 ├── .dockerignore               # Docker build exclusions
 ├── .env                        # Local environment secrets (ignored by Git)
 ├── .env.example                # Example environment template
@@ -33,28 +33,29 @@ api-key-frontend/
 ```text
        Browser (http://localhost:8080)
                      │
-        1. GET /api/data (Sanitized headers ONLY - No secrets sent)
+        1. GET /api/data?mode=valid (Sanitized headers ONLY - No secrets sent)
                      ▼
       Nginx Reverse Proxy Container (Port 80)
         - Serves static assets from src/ (index.html, css/styles.css, js/app.js)
-        - Substitutes env vars into docker/nginx.conf.template via docker-entrypoint.sh
-        - Injects header server-side: x-api-key: ${API_KEY}
+        - Evaluates test mode parameter ($arg_mode) using server-side Nginx map
+        - Injects header server-side: x-api-key: ${API_KEY} (or invalid/empty key)
                      │
         2. Proxied Request with Injected Header
                      ▼
       Backend API (http://host.docker.internal:3000)
                      │
-        3. Returns JSON Data (200 OK)
+        3. Returns JSON Data (200 OK / 401 Unauthorized)
                      ▼
-      Browser UI (Displays response data)
+      Browser UI (Displays response data & status badge)
 ```
 
 ---
 
 ## 🔒 Key Security Features
 
-- **Server-Side Credential Offloading:** The sensitive `x-api-key` header is attached strictly by Nginx server-side (`proxy_set_header x-api-key "${API_KEY}";`).
-- **Header Sanitization:** Client-side JavaScript (`src/js/app.js`) sends zero credentials or secrets in browser requests.
+- **Server-Side Credential Offloading:** The sensitive `x-api-key` header is attached strictly by Nginx server-side (`proxy_set_header x-api-key $injected_api_key;`).
+- **Header Sanitization:** Client-side JavaScript (`src/js/app.js`) sends zero credentials or secrets in browser requests (attaching standard `Accept` and `Content-Type` headers only).
+- **Interactive Mode Testing:** Users can test different backend authorization responses without exposing secret keys in browser Developer Tools.
 - **Dynamic Configuration:** Environment variables (`API_KEY`, `BACKEND_URL`) are injected into the Nginx configuration at container startup via `envsubst`.
 
 ---
@@ -108,17 +109,28 @@ docker run -d -p 8080:80 --name api-key-frontend --env-file .env api-key-fronten
 
 ---
 
-## 🧪 Testing API Endpoints
+## 🧪 Testing Key Scenarios & API Endpoints
 
-1. **Public Health Request (`GET /health`)**:
-   - Click **GET /health**.
+Select a **Key Testing Mode** in the UI, then click an action button:
+
+1. **Valid Key Mode (`Valid Key` button)**:
+   - Request: `GET /api/data?mode=valid`
+   - Nginx Behavior: Injects valid secret key `x-api-key: ${API_KEY}` server-side.
+   - Response: `200 OK` with `{"message": "Protected data", ...}`.
+
+2. **Invalid Key Mode (`Invalid Key` button)**:
+   - Request: `GET /api/data?mode=invalid`
+   - Nginx Behavior: Injects invalid key `x-api-key: INVALID_KEY_12345` server-side.
+   - Response: `401 Unauthorized` with `{"error": "Unauthorized: Invalid API key"}`.
+
+3. **Clear Key Mode (`Clear Key (No Key)` button)**:
+   - Request: `GET /api/data?mode=none`
+   - Nginx Behavior: Omits `x-api-key` header server-side.
+   - Response: `401 Unauthorized` with `{"error": "Unauthorized: Missing API key"}`.
+
+4. **Public Health Check (`GET /health`)**:
+   - Request: `GET /health`
    - Output: `200 OK` with `{"status": "ok"}`.
-2. **Protected GET Request (`GET /api/data`)**:
-   - Click **Get Protected Data**.
-   - Output: `200 OK` with `{"message": "Protected data", ...}`.
-3. **Protected POST Request (`POST /api/data`)**:
-   - Click **Send POST Request**.
-   - Output: `200 OK` with `{"message": "POST received"}`.
 
 ---
 
@@ -126,5 +138,5 @@ docker run -d -p 8080:80 --name api-key-frontend --env-file .env api-key-fronten
 
 Open browser Developer Tools (**F12**) ➔ **Network** tab ➔ Click `data`:
 
-- **Request Headers sent by Browser:** Contains only standard HTTP headers (`Accept`, `User-Agent`, etc.). Zero `x-api-key` headers are exposed or sent by the browser.
-- **Backend Receipt:** Nginx injects `x-api-key` on the server side before proxying to the backend, enabling secure authorization without client-side credential leakage.
+- **Request Headers sent by Browser:** Contains only standard HTTP headers (`Accept`, `Content-Type: application/json`, `User-Agent`, etc.). Zero `x-api-key` headers are exposed or sent by the browser.
+- **Backend Receipt:** Nginx evaluates the mode parameter and injects the appropriate `x-api-key` on the server side before proxying to the backend, enabling secure credential offloading without client-side key leakage.

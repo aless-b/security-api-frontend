@@ -4,21 +4,37 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Security API Exercise - Frontend (Nginx Proxy)</title>
-  <link rel="stylesheet" href="css/styles.css?v=5">
+  <link rel="stylesheet" href="css/styles.css?v=6">
 </head>
 <body>
   <div class="container">
     <header class="app-header">
       <span class="badge">Security Architecture</span>
-      <h1>API Key Credential Offloading Pattern</h1>
-      <p class="subtitle">Nginx Reverse Proxy & Server-Side Header Injection</p>
+      <h1>API Key Verification Pattern</h1>
+      <p class="subtitle">Nginx Reverse Proxy & Credential Offloading</p>
     </header>
 
     <main class="card">
       <section class="config-section">
+        <label class="input-label">
+          <strong>Select Key Testing Mode:</strong>
+          <span id="active-mode-label" class="active-badge">Valid Key</span>
+        </label>
+        <div class="key-mode-group">
+          <button id="valid-key-btn" class="btn btn-mode active" title="Proxy valid secret key server-side">
+            Valid Key
+          </button>
+          <button id="invalid-key-btn" class="btn btn-mode" title="Proxy invalid key to test 401">
+            Invalid Key
+          </button>
+          <button id="clear-key-btn" class="btn btn-mode" title="Omit key to test 401">
+            Clear Key (No Key)
+          </button>
+        </div>
+
         <div class="security-banner">
-          🔒 <strong>Secure Header Offloading:</strong> Requests sent from the browser contain ZERO sensitive API keys or tokens. 
-          The Nginx reverse proxy attaches the <code>x-api-key</code> header server-side before forwarding requests to the backend.
+          🔒 <strong>Secure Header Offloading:</strong> Client browser sends ONLY standard <code>Content-Type</code> headers. 
+          The Nginx reverse proxy evaluates your selected mode and injects/omits the <code>x-api-key</code> header server-side.
         </div>
       </section>
 
@@ -47,7 +63,7 @@
         </div>
         
         <div class="response-box">
-          <pre id="response-output">Click one of the buttons above to send an HTTP request through Nginx.</pre>
+          <pre id="response-output">Click one of the action buttons above to send an HTTP request through Nginx.</pre>
         </div>
       </section>
     </main>
@@ -57,6 +73,6 @@
     </footer>
   </div>
 
-  <script src="js/app.js?v=5"></script>
+  <script src="js/app.js?v=6"></script>
 </body>
 </html>

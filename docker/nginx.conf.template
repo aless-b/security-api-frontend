@@ -1,3 +1,10 @@
+map $arg_mode $injected_api_key {
+    default     "${API_KEY}";
+    "valid"     "${API_KEY}";
+    "invalid"   "INVALID_KEY_12345";
+    "none"      "";
+}
+
 server {
     listen 80;
     server_name localhost;
@@ -31,8 +38,8 @@ server {
     location /api/ {
         proxy_pass ${BACKEND_URL}/api/;
 
-        # Header Injection: Nginx injects the secret API key server-side so browser never exposes it
-        proxy_set_header x-api-key "${API_KEY}";
+        # Header Injection: Nginx injects the API key server-side based on test mode
+        proxy_set_header x-api-key $injected_api_key;
 
         # Standard Proxy Headers
         proxy_set_header Host $host;
