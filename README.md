@@ -1,6 +1,6 @@
-# API Key Reverse Proxy & Credential Offloading - Frontend Application
+# API Key Reverse Proxy, RSA Encryption & OpenLDAP Suite - Frontend Application
 
-This repository contains the containerized Nginx frontend web interface for the API key verification security exercise. It proxies client requests to the Express backend service (`api-key-backend`) while offloading sensitive credential management to the server side.
+This repository contains the containerized **Nginx reverse proxy, frontend web application, and asymmetric cryptography service** for the security architecture lab. It offloads credential management server-side, provides OpenLDAP user authentication, supports RSA payload encryption/decryption, and integrates 2-minute automated secret rotation.
 
 ---
 
@@ -8,22 +8,29 @@ This repository contains the containerized Nginx frontend web interface for the 
 
 ```text
 api-key-frontend/
-├── docker/                     # Nginx configurations & entrypoint scripts
-│   ├── nginx.conf.template     # Nginx template with mode mapping & reverse proxy rules
-│   └── docker-entrypoint.sh    # Script for envsubst environment variable substitution
-├── src/                        # Static web application source code
-│   ├── index.html              # Main HTML webpage with mode selection UI
-│   ├── css/
-│   │   └── styles.css          # Stylesheets and visual layout
+├── crypto_app/                       # 🔒 Embedded Cryptography API (Python 3.12 + FastAPI)
+│   ├── main.py                       # RSA Encrypt & Decrypt Endpoints
+│   ├── models/crypto.py              # Pydantic Schemas
+│   └── services/crypto_service.py    # RSA Key Generation & Crypto Service
+├── docker/                           # 🐳 Nginx Proxy Configurations & Entrypoint
+│   ├── nginx.conf.template           # Reverse Proxy Config (/api/, /crypto/, /ldap/ routes)
+│   └── docker-entrypoint.sh          # Dynamic envsubst & Uvicorn startup script
+├── scripts/                          # 🔄 Secret Rotation Daemons
+│   ├── rotate_secret.js              # Node.js 2-minute rotation daemon
+│   └── rotate_secret.ps1             # PowerShell 2-minute rotation daemon
+├── src/                              # 🌐 Web Application Frontend
+│   ├── login.html                    # OpenLDAP Directory Login Page
+│   ├── index.html                    # Main Security Suite Dashboard
+│   ├── css/styles.css                # Stylesheet & visual layout
 │   └── js/
-│       └── app.js              # Client application fetch logic (zero browser secrets)
-├── .dockerignore               # Docker build exclusions
-├── .env                        # Local environment secrets (ignored by Git)
-├── .env.example                # Example environment template
-├── .gitignore                  # Git exclusions
-├── Dockerfile                  # Container build instructions
-├── docker-compose.yml          # Container orchestration
-└── README.md                   # Project documentation
+│       ├── login.js                  # Login form handler & session redirect
+│       └── app.js                    # Dashboard API & Encryption fetch logic
+├── .env                              # Local environment secrets (ignored by Git)
+├── .env.example                      # Example environment template
+├── Dockerfile                        # 🐳 Unified Dockerfile (Python + Nginx)
+├── docker-compose.yml                # Multi-container local orchestration
+├── package.json                      # NPM script registry (`npm run rotate`)
+└── README.md                         # Project documentation
 ```
 
 ---
@@ -31,22 +38,15 @@ api-key-frontend/
 ## 🏗️ Architecture & Interaction Diagram
 
 ```text
-       Browser (http://localhost:8080)
-                     │
-        1. GET /api/data?mode=valid (Sanitized headers ONLY - No secrets sent)
-                     ▼
-      Nginx Reverse Proxy Container (Port 80)
-        - Serves static assets from src/ (index.html, css/styles.css, js/app.js)
-        - Evaluates test mode parameter ($arg_mode) using server-side Nginx map
-        - Injects header server-side: x-api-key: ${API_KEY} (or invalid/empty key)
-                     │
-        2. Proxied Request with Injected Header
-                     ▼
-      Backend API (http://host.docker.internal:3000)
-                     │
-        3. Returns JSON Data (200 OK / 401 Unauthorized)
-                     ▼
-      Browser UI (Displays response data & status badge)
+       Browser (http://localhost:8080/login.html)
+                         │
+      1. POST /ldap/login (User: alice / Pass: alice123)
+                         │ (Authenticated 200 OK)
+                         ▼
+       Browser (http://localhost:8080/index.html)
+        ├── 2. GET /api/data?mode=valid  ──► Nginx Injects x-api-key: ${API_SECRET} ──► Backend API (:3000)
+        ├── 3. POST /crypto/encrypt     ──► Nginx Proxy ──► Internal RSA Service (:8000)
+        └── 4. POST /ldap/login         ──► Nginx Proxy ──► LDAP FastAPI Service (:8001) ──► OpenLDAP Container (:389)
 ```
 
 ---
@@ -54,89 +54,86 @@ api-key-frontend/
 ## 🔒 Key Security Features
 
 - **Server-Side Credential Offloading:** The sensitive `x-api-key` header is attached strictly by Nginx server-side (`proxy_set_header x-api-key $injected_api_key;`).
-- **Header Sanitization:** Client-side JavaScript (`src/js/app.js`) sends zero credentials or secrets in browser requests (attaching standard `Accept` and `Content-Type` headers only).
-- **Interactive Mode Testing:** Users can test different backend authorization responses without exposing secret keys in browser Developer Tools.
-- **Dynamic Configuration:** Environment variables (`API_KEY`, `BACKEND_URL`) are injected into the Nginx configuration at container startup via `envsubst`.
+- **Header Sanitization:** Client-side JavaScript (`src/js/app.js`) sends zero credentials or secrets in browser requests.
+- **OpenLDAP Directory Authentication:** Interactive 2-page login flow (`login.html` ➔ `index.html`) validating credentials against OpenLDAP directory users (`alice` / `alice123`).
+- **Asymmetric RSA Encryption/Decryption:** Payload encryption before database storage (`POST /crypto/encrypt` & `POST /crypto/decrypt`).
+- **Secret Isolation & 2-Minute Rotation:**
+  - `API_SECRET` and `LDAP_ADMIN_PASSWORD`: Rotated automatically every 2 minutes.
+  - `DATABASE_ENCRYPTION_KEY`: Static/permanent key for persistent database data decryption.
 
 ---
 
 ## 🚀 How to Run
 
-### ⚠️ Prerequisite: Start the Backend Server First
-
-For the frontend reverse proxy to function, the backend API server must be running on port `3000`.
-
-1. Open a terminal and navigate to the backend repository:
-   ```bash
-   cd ../api-key-backend
-   ```
-2. Install dependencies and start the backend:
-   ```bash
-   npm install
-   npm start
-   ```
-   *Output:* `Server running on http://localhost:3000`
-
----
-
-### Running the Frontend with Docker Compose (Recommended)
-
-1. Ensure `.env` is configured:
-   ```env
-   API_KEY=SECRET_EDUCATIONAL_KEY_12345
-   BACKEND_URL=http://host.docker.internal:3000
-   ```
-2. Build and start the container:
-   ```bash
-   docker-compose up -d --build
-   ```
-3. Open your browser to:
-   ```text
-   http://localhost:8080
-   ```
-
----
-
-### Running with Docker CLI
-
+### 1. Ensure Backend API Server is Running
 ```bash
-# 1. Build the Docker image
-docker build -t api-key-frontend .
+cd ../api-key-backend
+npm start
+```
+*Output:* `Server running on http://localhost:3000`
 
-# 2. Run the container with environment variables
-docker run -d -p 8080:80 --name api-key-frontend --env-file .env api-key-frontend
+---
+
+### 2. Build & Start Containers
+From `api-key-frontend`:
+```bash
+docker-compose up -d --build
 ```
 
 ---
 
-## 🧪 Testing Key Scenarios & API Endpoints
+### 3. Open Web Application in Browser
+Navigate to:
+```text
+http://localhost:8080/login.html
+```
 
-Select a **Key Testing Mode** in the UI, then click an action button:
-
-1. **Valid Key Mode (`Valid Key` button)**:
-   - Request: `GET /api/data?mode=valid`
-   - Nginx Behavior: Injects valid secret key `x-api-key: ${API_KEY}` server-side.
-   - Response: `200 OK` with `{"message": "Protected data", ...}`.
-
-2. **Invalid Key Mode (`Invalid Key` button)**:
-   - Request: `GET /api/data?mode=invalid`
-   - Nginx Behavior: Injects invalid key `x-api-key: INVALID_KEY_12345` server-side.
-   - Response: `401 Unauthorized` with `{"error": "Unauthorized: Invalid API key"}`.
-
-3. **Clear Key Mode (`Clear Key (No Key)` button)**:
-   - Request: `GET /api/data?mode=none`
-   - Nginx Behavior: Omits `x-api-key` header server-side.
-   - Response: `401 Unauthorized` with `{"error": "Unauthorized: Missing API key"}`.
-
-4. **Public Health Check (`GET /health`)**:
-   - Request: `GET /health`
-   - Output: `200 OK` with `{"status": "ok"}`.
+- **LDAP Demo Credentials:**
+  - Username: `alice` | Password: `alice123`
+  - Username: `bob`   | Password: `bob123`
 
 ---
 
-## 🔍 Security Takeaway & Verification
+## 🔄 Automatic Secret Rotation
 
-Open browser Developer Tools (**F12**) ➔ **Network** tab ➔ Click `data`:
+To start the automated 2-minute secret rotation daemon:
 
-- **Request Headers sent by Browser:** Contains only standard HTTP headers (`Accept`, `Content-Type: application/json`, `User-Agent`, etc.). Zero `x-api-key` headers are exposed or sent by the browser.
-- **Backend Receipt:** Nginx evaluates the mode parameter and injects the appropriate `x-api-key` on the server side before proxying to the backend, enabling secure credential offloading without client-side key leakage.
+### Node.js
+```bash
+npm run rotate
+```
+
+### PowerShell
+```powershell
+.\scripts\rotate_secret.ps1
+```
+
+### Verification Commands
+Inspect secrets inside the running container:
+```powershell
+# Active Rotated API_SECRET
+docker exec api-key-frontend sh -c '. /etc/environment && echo $API_SECRET'
+
+# Permanent Database Encryption Key (Unchanged)
+docker exec api-key-frontend sh -c 'echo $DATABASE_ENCRYPTION_KEY'
+```
+
+---
+
+## 🧪 Key Scenarios & API Endpoints
+
+1. **LDAP Login (`POST /ldap/login`)**:
+   - Request: `POST /ldap/login` with `{"username": "alice", "password": "alice123"}`
+   - Response: `200 OK` with user DN `uid=alice,ou=users,dc=example,dc=com`.
+
+2. **RSA Encryption (`POST /crypto/encrypt`)**:
+   - Request: `POST /crypto/encrypt` with `{"message": "Confidential Data"}`
+   - Response: `200 OK` with base64 ciphertext.
+
+3. **RSA Decryption (`POST /crypto/decrypt`)**:
+   - Request: `POST /crypto/decrypt` with base64 ciphertext
+   - Response: `200 OK` with original plaintext `"Confidential Data"`.
+
+4. **Valid Key Mode (`GET /api/data?mode=valid`)**:
+   - Nginx Behavior: Injects valid secret key `x-api-key: ${API_SECRET}` server-side.
+   - Response: `200 OK`.
