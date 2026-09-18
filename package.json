@@ -1,0 +1,8 @@
+{
+  "name": "api-key-frontend",
+  "version": "1.0.0",
+  "description": "API Key Reverse Proxy Frontend with Automatic Secret Rotation",
+  "scripts": {
+    "rotate": "node scripts/rotate_secret.js"
+  }
+}

@@ -1,13 +1,21 @@
 #!/bin/sh
 set -e
 
-# Fallback default values if environment variables are omitted
-export API_KEY="${API_KEY:-SECRET_EDUCATIONAL_KEY_12345}"
-export BACKEND_URL="${BACKEND_URL:-http://host.docker.internal:3000}"
+# Export environment variables
+export API_SECRET="${API_SECRET}"
+export BACKEND_URL="${BACKEND_URL}"
+export LDAP_API_URL="${LDAP_API_URL}"
 
-# Substitute environment variables into Nginx template
-# Explicitly specifying $API_KEY and $BACKEND_URL prevents envsubst from overwriting Nginx variables like $uri
-envsubst '$API_KEY $BACKEND_URL' < /etc/nginx/templates/nginx.conf.template > /etc/nginx/conf.d/default.conf
+# Write API_SECRET to /etc/environment so docker exec sh commands read active secret
+echo "export API_SECRET=\"${API_SECRET}\"" > /etc/environment
+echo "export BACKEND_URL=\"${BACKEND_URL}\"" >> /etc/environment
+echo "export LDAP_API_URL=\"${LDAP_API_URL}\"" >> /etc/environment
 
-# Execute the container's primary command (CMD)
+# Substitute environment variables into Nginx configuration
+envsubst '$API_SECRET $BACKEND_URL $LDAP_API_URL' < /etc/nginx/templates/nginx.conf.template > /etc/nginx/conf.d/default.conf
+
+# Start internal Python Crypto API service in background (loopback port 8000)
+PYTHONPATH=/app uvicorn crypto_app.main:app --host 127.0.0.1 --port 8000 &
+
+# Execute foreground Nginx command (CMD)
 exec "$@"

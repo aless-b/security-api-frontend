@@ -1,7 +1,7 @@
 map $arg_mode $injected_api_key {
-    default     "${API_KEY}";
-    "valid"     "${API_KEY}";
-    "invalid"   "INVALID_KEY_12345";
+    default     "${API_SECRET}";
+    "valid"     "${API_SECRET}";
+    "invalid"   "INVALID_KEY_TEST";
     "none"      "";
 }
 
@@ -40,6 +40,28 @@ server {
 
         # Header Injection: Nginx injects the API key server-side based on test mode
         proxy_set_header x-api-key $injected_api_key;
+
+        # Standard Proxy Headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Internal Crypto Service Proxy Route (Internal Loopback on port 8000)
+    location /crypto/ {
+        proxy_pass http://127.0.0.1:8000/crypto/;
+
+        # Standard Proxy Headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # LDAP Authentication Proxy Route
+    location /ldap/ {
+        proxy_pass ${LDAP_API_URL}/;
 
         # Standard Proxy Headers
         proxy_set_header Host $host;

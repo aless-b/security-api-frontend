@@ -1,3 +1,25 @@
+// Authentication Check - Protect Dashboard Page
+if (sessionStorage.getItem('ldap_authenticated') !== 'true') {
+  window.location.href = 'login.html';
+}
+
+// Display Authenticated User Session Info
+const userDisplayName = document.getElementById('user-display-name');
+if (userDisplayName) {
+  const username = sessionStorage.getItem('ldap_user') || 'alice';
+  const dn = sessionStorage.getItem('ldap_dn') || '';
+  userDisplayName.textContent = dn ? `${username} (${dn})` : username;
+}
+
+// Logout Handler
+const logoutBtn = document.getElementById('logout-btn');
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', () => {
+    sessionStorage.clear();
+    window.location.href = 'login.html';
+  });
+}
+
 // State: 'valid' | 'invalid' | 'none'
 let currentKeyMode = 'valid';
 
@@ -10,6 +32,10 @@ const activeModeLabel = document.getElementById('active-mode-label');
 const getHealthBtn = document.getElementById('get-health-btn');
 const getDataBtn = document.getElementById('get-data-btn');
 const postDataBtn = document.getElementById('post-data-btn');
+
+const encryptBtn = document.getElementById('encrypt-btn');
+const decryptBtn = document.getElementById('decrypt-btn');
+const cryptoInput = document.getElementById('crypto-input');
 
 const responseOutput = document.getElementById('response-output');
 const statusBadge = document.getElementById('status-badge');
@@ -49,6 +75,7 @@ if (clearKeyBtn) {
 
 // Helper function to update status badge
 function updateStatusBadge(status, statusText) {
+  if (!statusBadge) return;
   statusBadge.classList.remove('hidden', 'success', 'error');
   statusBadge.textContent = `${status} ${statusText}`;
 
@@ -60,14 +87,10 @@ function updateStatusBadge(status, statusText) {
 }
 
 // Core Fetch Handler - Client Application
-// Header Sanitization: Client browser sends ZERO secret tokens or API keys.
-// Browser sends ONLY standard headers (Accept / Content-Type).
-// Nginx reverse proxy inspects mode parameter and performs server-side header injection.
 async function makeApiRequest(endpoint, method = 'GET', body = null) {
-  responseOutput.textContent = 'Sending request via Nginx Reverse Proxy...';
-  statusBadge.classList.add('hidden');
+  if (responseOutput) responseOutput.textContent = 'Sending request via Nginx Reverse Proxy...';
+  if (statusBadge) statusBadge.classList.add('hidden');
 
-  // Standard headers ONLY - Zero sensitive credentials attached by browser!
   const headers = {
     'Accept': 'application/json'
   };
@@ -83,7 +106,6 @@ async function makeApiRequest(endpoint, method = 'GET', body = null) {
   }
 
   try {
-    // Append mode query parameter for server-side Nginx proxy evaluation
     const url = endpoint.includes('?') 
       ? `${endpoint}&mode=${currentKeyMode}` 
       : `${endpoint}?mode=${currentKeyMode}`;
@@ -99,28 +121,60 @@ async function makeApiRequest(endpoint, method = 'GET', body = null) {
       data = { message: 'No JSON body returned' };
     }
 
-    responseOutput.textContent = JSON.stringify(data, null, 2);
+    if (responseOutput) responseOutput.textContent = JSON.stringify(data, null, 2);
+    return { ok: response.ok, status: response.status, data };
   } catch (error) {
-    statusBadge.classList.remove('hidden', 'success');
-    statusBadge.classList.add('error');
-    statusBadge.textContent = 'Network Error';
+    if (statusBadge) {
+      statusBadge.classList.remove('hidden', 'success');
+      statusBadge.classList.add('error');
+      statusBadge.textContent = 'Network Error';
+    }
 
-    responseOutput.textContent = JSON.stringify({
-      error: 'Failed to communicate with Nginx proxy server',
-      details: error.message
-    }, null, 2);
+    if (responseOutput) {
+      responseOutput.textContent = JSON.stringify({
+        error: 'Failed to communicate with Nginx proxy server',
+        details: error.message
+      }, null, 2);
+    }
+    return { ok: false, status: 0, error };
   }
 }
 
-// Event Listeners for API Calls
-getHealthBtn.addEventListener('click', () => {
-  makeApiRequest('/health', 'GET');
-});
+// Event Listeners for Dashboard API Calls
+if (getHealthBtn) {
+  getHealthBtn.addEventListener('click', () => {
+    makeApiRequest('/health', 'GET');
+  });
+}
 
-getDataBtn.addEventListener('click', () => {
-  makeApiRequest('/api/data', 'GET');
-});
+if (getDataBtn) {
+  getDataBtn.addEventListener('click', () => {
+    makeApiRequest('/api/data', 'GET');
+  });
+}
 
-postDataBtn.addEventListener('click', () => {
-  makeApiRequest('/api/data', 'POST', { message: 'Secure payload from client' });
-});
+if (postDataBtn) {
+  postDataBtn.addEventListener('click', () => {
+    makeApiRequest('/api/data', 'POST', { message: 'Secure payload from client' });
+  });
+}
+
+if (encryptBtn) {
+  encryptBtn.addEventListener('click', async () => {
+    const msg = cryptoInput ? cryptoInput.value : 'Confidential Database Record 123';
+    const res = await makeApiRequest('/crypto/encrypt', 'POST', { message: msg });
+    if (res.data && res.data.ciphertext && cryptoInput) {
+      cryptoInput.value = res.data.ciphertext;
+    }
+  });
+}
+
+if (decryptBtn) {
+  decryptBtn.addEventListener('click', async () => {
+    const msg = cryptoInput ? cryptoInput.value : '';
+    const res = await makeApiRequest('/crypto/decrypt', 'POST', { message: msg });
+    if (res.data && res.data.plaintext && cryptoInput) {
+      cryptoInput.value = res.data.plaintext;
+    }
+  });
+}

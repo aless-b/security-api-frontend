@@ -3,18 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Security API Exercise - Frontend (Nginx Proxy)</title>
-  <link rel="stylesheet" href="css/styles.css?v=6">
+  <title>Security API Exercise - Dashboard</title>
+  <link rel="stylesheet" href="css/styles.css?v=8">
 </head>
 <body>
   <div class="container">
     <header class="app-header">
       <span class="badge">Security Architecture</span>
-      <h1>API Key Verification Pattern</h1>
+      <h1>API Key Verification & RSA Suite</h1>
       <p class="subtitle">Nginx Reverse Proxy & Credential Offloading</p>
     </header>
 
     <main class="card">
+      <!-- Session Bar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+        <div>
+          <span style="font-size: 0.85rem; color: var(--text-secondary);">Authenticated LDAP User:</span>
+          <strong id="user-display-name" style="display: block; font-size: 1rem; color: var(--primary-color);">alice</strong>
+        </div>
+        <button id="logout-btn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+          🚪 Logout
+        </button>
+      </div>
+
       <section class="config-section">
         <label class="input-label">
           <strong>Select Key Testing Mode:</strong>
@@ -39,7 +50,7 @@
       </section>
 
       <section class="actions-section">
-        <h2>Actions</h2>
+        <h2>API Security Actions</h2>
         <div class="button-group">
           <button id="get-health-btn" class="btn btn-info">
             GET /health
@@ -52,6 +63,24 @@
           <button id="post-data-btn" class="btn btn-success">
             Send POST Request
             <span class="btn-subtext">(POST /api/data)</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="actions-section" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+        <h2>Database Data Encryption & Decryption (Asymmetric RSA)</h2>
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Payload / Ciphertext Message:</label>
+          <input type="text" id="crypto-input" style="width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--border-color); border-radius: 0.375rem; font-size: 0.95rem;" placeholder="Enter message to encrypt or base64 ciphertext to decrypt..." value="Confidential Database Record 123">
+        </div>
+        <div class="button-group">
+          <button id="encrypt-btn" class="btn btn-primary">
+            🔒 Encrypt Payload
+            <span class="btn-subtext">(POST /crypto/encrypt)</span>
+          </button>
+          <button id="decrypt-btn" class="btn btn-success">
+            🔓 Decrypt Ciphertext
+            <span class="btn-subtext">(POST /crypto/decrypt)</span>
           </button>
         </div>
       </section>
@@ -73,6 +102,6 @@
     </footer>
   </div>
 
-  <script src="js/app.js?v=6"></script>
+  <script src="js/app.js?v=8"></script>
 </body>
 </html>

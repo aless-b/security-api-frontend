@@ -1,19 +1,36 @@
-# Base image: Nginx 1.27 Alpine
-FROM nginx:1.27-alpine
+# Unified Container: Nginx + Python 3.12 Asymmetric Crypto API
+FROM python:3.12-slim
 
-# Copy Nginx template and entrypoint script from docker/ directory
+# Set POSIX shell environment file so docker exec sh commands automatically load updated secrets
+ENV ENV=/etc/environment
+
+# Install Nginx and gettext (for envsubst)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nginx \
+    gettext-base \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python crypto dependencies
+COPY crypto_app/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy Python Crypto API source code
+COPY crypto_app ./crypto_app
+
+# Copy Nginx template & entrypoint script
 COPY docker/nginx.conf.template /etc/nginx/templates/nginx.conf.template
 COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
-
-# Ensure execution permissions for the entrypoint script
 RUN chmod +x /docker-entrypoint.sh
 
-# Copy static frontend assets from src/ directory
+# Copy static Web Frontend assets
 COPY src/ /usr/share/nginx/html/
 
-# Expose HTTP port 80
+# Create persistent keys directory
+RUN mkdir -p /app/keys
+
 EXPOSE 80
 
-# Configure entrypoint script and default command
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
